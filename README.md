@@ -1,102 +1,80 @@
-# LibreWolf Overrides Exporter (Policy‑Only, Privacy‑First)
+# LibreWolf Overrides Exporter
 
-This tool generates a `librewolf.overrides.cfg` file from your *current* LibreWolf profile by exporting **only stable, intentional policy preferences**.
+This tool generates a `librewolf.overrides.cfg` file from your **current LibreWolf profile**, exporting **only stable, user‑intentional policy preferences**.
 
-It mirrors what you see in `about:config → Only show modified preferences`, **but deliberately excludes anything that represents state, history, identifiers, timestamps, counters, or UI bookkeeping**. The goal is to enforce *what the browser should do*, not *what has happened before*.
+It mirrors what you see in:
 
----
+> `about:config → Only show modified preferences`
 
-## Design principles
+while deliberately excluding runtime state, identifiers, timestamps, counters, migration flags, and UI bookkeeping.
 
-This exporter follows a strict rule:
-
-> **If a preference answers “what happened?” it is ignored.  
-> If it answers “what should the browser do?” it may be enforced.**
-
-Accordingly, the script:
-
-- **Keeps** privacy posture and behavior choices (policy)
-- **Drops** runtime state, migration flags, timestamps, counters, and identifiers
-- Avoids pinning anything that could:
-  - increase fingerprint stability
-  - leak behavioral history
-  - break update / cleanup logic
-  - encode per‑profile identity
+LibreWolf settings and override precedence documentation:
+https://librewolf.net/docs/settings/
 
 ---
 
 ## What is exported (examples)
 
-These are **policy knobs** and are enforced via `pref(...)`:
+Only **policy knobs** — settings that answer *“what should the browser do?”*:
 
-- Tracking protection and content blocking  
-  (`privacy.trackingprotection.*`, `browser.contentblocking.*`)
-- Telemetry / reporting policy  
-  (`toolkit.telemetry.*`, `datareporting.policy.*`)
-- Networking posture  
-  (`beacon.enabled`, `network.trr.*`, `network.dns.*`)
+- Privacy & tracking protection  
+  `privacy.trackingprotection.*`, `browser.contentblocking.*`
+- Network privacy  
+  `beacon.enabled`, `network.trr.*`, `network.dns.*`
+- Telemetry / reporting policy (not cached IDs)  
+  `toolkit.telemetry.*`, `datareporting.policy.*`
 - Security posture  
-  (`dom.security.*`, `security.*`)
+  `dom.security.*`, selected `security.*`
 - Form autofill policy  
-  (`dom.forms.autocomplete.formautofill` — KeePassXC unaffected)
-- **EME / DRM toggle**  
-  (`media.eme.enabled`, if you intentionally set it)
-- **Bookmarks auto‑export path**  
-  (`browser.bookmarks.file`, if you intentionally set it)
+  `dom.forms.autocomplete.formautofill` (KeePassXC unaffected)
+- DRM / EME toggle (if intentionally set)  
+  `media.eme.enabled`
+- Bookmarks auto‑export path (if intentionally set)  
+  `browser.bookmarks.file`
 
 ---
 
 ## What is intentionally excluded
 
-The script **will not export or pin** any of the following, even if they appear modified:
+The script will **never export or pin**:
 
-### Identifiers
-Examples:
-- `*Id`, `*UUID`, `impressionId`, `profileId`, `storeID`, `clientID`
-- Push / Nimbus / per‑profile identifiers
+### Identifiers / per‑profile data
+- `extensions.webextensions.uuids`
+- `*Id`, `*UUID`, `profileId`, `storeID`, `clientID`
+- Nimbus / Push / per‑install identifiers
 
-### Timestamps and lifecycle state
-Examples:
+### Timestamps, counters, lifecycle state
 - `last*`, `next*`, `*_date`, `*_time`, `*_seconds`
+- `browser.search.totalSearches`
 - `privacy.purge_trackers.last_purge`
 - `browser.startup.lastColdStartupCheck`
 
-### Counters and history
-Examples:
-- `browser.search.totalSearches`
-- `*count`, `*counter`, `*impressions`
-
-### Migration, UI, and bookkeeping state
-Examples:
-- `*.has-used`, `*.ever*`, `*.seen`, `*.pending`
+### UI, migration, and bookkeeping state
 - `browser.uiCustomization.state`
 - `browser.pageActions.persistedActions`
+- `*.has-used`, `*.ever*`, `*.seen`, `*.pending`
 - `extensions.*Schema`, `*migration*`
 
-### Component / DRM / hardware bookkeeping
-Examples:
+### Component / hardware bookkeeping
 - `media.gmp-*`
 - `gfx.blacklist.*`
-- temp directory suffixes, failure IDs, hashes
-
-These are **not configuration** and pinning them is harmful.
+- sandbox temp directory suffixes, failure IDs, hashes
 
 ---
 
-## Output behavior
+## Command‑line flags
 
-- Reads from the active LibreWolf profile’s `prefs.js`
-- Writes enforced settings to `librewolf.overrides.cfg`
-- Uses `pref(...)` (hard enforcement), not `defaultPref(...)`
-- Supports full auditing of skipped preferences
+- `--base-dir PATH`  
+  Explicit LibreWolf base directory
 
-Useful commands:
+- `--profile-dir PATH`  
+  Explicit profile directory (overrides `profiles.ini`)
 
-```bash
-python3 lw_export_overrides_policyonly.py
-python3 lw_export_overrides_policyonly.py --print-skipped
-python3 lw_export_overrides_policyonly.py --stats
-```
+- `--output PATH`  
+  Output path for `librewolf.overrides.cfg`
+
+- `--print-skipped`  
+  Print skipped preferences as commented `user_pref(...)` lines for audit
 
 ---
 

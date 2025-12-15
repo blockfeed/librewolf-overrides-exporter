@@ -13,42 +13,59 @@ PREF_RE = re.compile(r'^\s*user_pref\("(?P<name>[^"]+)",\s*(?P<value>.+?)\s*\);\
 # Hard rule: explicit denylist ALWAYS wins over allowlist.
 
 DEFAULT_EXCLUDE_PREFIXES = [
+    # session/runtime churn
     "browser.sessionstore.",
     "browser.startup.",
+    # UI / engagement bookkeeping
     "browser.engagement.",
     "browser.migration.",
     "browser.protections_panel.",
     "browser.termsofuse.",
     "devtools.",
+    # remote settings / region / connectivity bookkeeping
     "services.settings.",
     "browser.region.",
     "network.captive-portal-service.",
     "network.connectivity-service.",
     "browser.safebrowsing.provider.",
-    "extensions.webextensions.ExtensionStorageIDB.migrated.",
+    # distro/policy bookkeeping
+    "browser.policies.",
+    "distribution.",
+    # extensions churn
+    "extensions.getAddons.",
+    "extensions.systemAddonSet",  # JSON blob state
+    # telemetry/reporting caches
     "toolkit.telemetry.cached",
     "datareporting.dau.cached",
+    # experiments/rollouts
     "nimbus.",
+    # push identifiers/state
     "dom.push.",
+    # never pin: per-profile extension UUID map
+    "extensions.webextensions.uuids",
+    # never pin: font fingerprinting surface
+    "font.",
 ]
 
 DEFAULT_EXCLUDE_SUBSTRINGS = [
-    # identifiers
+    # identifiers / per-profile markers
     "impressionid", "storeid", "profileid", "clientid", "userid",
-    "pushid", "installationid", "instanceid", "deviceid", "machineid", "guid",
-    # time / state / counters
+    "pushid", "installationid", "instanceid", "deviceid", "machineid", "guid", "uuid",
+    # time / state / counters / history
     "last", "next", "date", "time", "seconds", "count", "counter",
     "etag", "skew", "pending", "qualified",
-    # migration / bookkeeping
+    # migration/UX bookkeeping
     "migrat", "version", "schema", "checkpoint", "has-used",
-    "ever", "seen", "shown", "mostrecent",
-    # known state blobs
+    "ever", "seen", "shown", "mostrecent", "applied", "processed",
+    # known state blobs / revealing prefs
     "persistedactions", "uicustomization", "resultgroups",
     "quarantineddomains", "tempdirsuffix",
     "blacklist.", "failureid", "hashvalue", "buildid",
 ]
 
+# Explicit denylist regexes (MUST win over allowlist)
 DEFAULT_EXCLUDE_REGEXES = [
+    r"^extensions\.webextensions\.uuids$",  # critical: never pin
     r"^privacy\.purge_trackers\.(last_purge|date_in_cookie_database)$",
     r"^privacy\.sanitize\.pending$",
     r"^browser\.search\.totalSearches$",
@@ -64,9 +81,11 @@ DEFAULT_EXCLUDE_REGEXES = [
     r"^print_printer$",
 ]
 
+# Allowlist regexes (tight; denylist still wins)
 DEFAULT_INCLUDE_REGEXES = [
     # user-intent policy
     r"^media\.eme\.enabled$",
+    r"^browser\.bookmarks\.autoExportHTML$",
     r"^browser\.bookmarks\.file$",
 
     # privacy / security posture
@@ -181,7 +200,7 @@ def write_overrides(prefs: Iterable[Tuple[str, str]], out_path: Path) -> None:
     header = (
         "/**\n"
         " * Generated from prefs.js user preferences\n"
-        " * Policy-only, privacy-first: no IDs, timestamps, counters, or UI state\n"
+        " * Policy-only, privacy-first: no IDs, timestamps, counters, UI state, or font pinning\n"
         " */"
     )
     with out_path.open("w", encoding="utf-8", newline="\n") as f:
@@ -191,7 +210,7 @@ def write_overrides(prefs: Iterable[Tuple[str, str]], out_path: Path) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Export LibreWolf policy prefs to librewolf.overrides.cfg (privacy-first)")
     ap.add_argument("--base-dir", type=Path)
     ap.add_argument("--profile-dir", type=Path)
     ap.add_argument("--output", type=Path)
