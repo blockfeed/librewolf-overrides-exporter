@@ -19,13 +19,6 @@ This is meant to mirror what you see in `about:config` when you enable **“Only
 
 - Python 3 (no third-party dependencies)
 
-## Install
-
-```bash
-git clone <your repo url>
-cd <repo>
-```
-
 ## Usage
 
 Run with autodetection:
